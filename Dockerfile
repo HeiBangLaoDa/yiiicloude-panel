@@ -14,17 +14,23 @@ FROM node:22.17.0-alpine AS base
 # Stage 1: deps — 装所有 dependencies（含 dev，因 builder 要 pnpm build）
 # ────────────────────────────────────────────────────────────────────
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+# 显式 pin pnpm@10（panel package.json engines.pnpm 限 ^9 || ^10；
+# `corepack enable pnpm` 不读 engines 字段，默认拉最新 11.x，会被 npm 拒绝）
+RUN apk add --no-cache libc6-compat \
+    && corepack enable \
+    && corepack prepare pnpm@10.0.0 --activate
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm i --frozen-lockfile
+RUN pnpm i --frozen-lockfile
 
 # ────────────────────────────────────────────────────────────────────
 # Stage 2: builder — pnpm build → 产出 .next/standalone
 # ────────────────────────────────────────────────────────────────────
 FROM base AS builder
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat \
+    && corepack enable \
+    && corepack prepare pnpm@10.0.0 --activate
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -37,7 +43,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URI=postgres://placeholder@placeholder/placeholder
 ENV PAYLOAD_SECRET=placeholder-build-time-secret
 
-RUN corepack enable pnpm && pnpm run build
+RUN pnpm run build
 
 # ────────────────────────────────────────────────────────────────────
 # Stage 3: runner — 最小化运行时

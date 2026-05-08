@@ -57,6 +57,11 @@ export default buildConfig({
       connectionString: process.env.DATABASE_URI || '',
     },
     // 默认 schema = public；不设 schemaName，让 Payload 直接用 public（与 control-plane 不在同库，无冲突）
+    // push: 启动时自动同步 schema 到 PG（建表/加列；drizzle 行为）。
+    // dev 默认 true；prod 默认 false（要求显式跑 payload migrate）。
+    // panel 当前未维护 migration 文件 → prod 也强制 push:true 让首次启动自建表。
+    // 引入正式 migration 后改回 push:false + CI 跑 payload migrate。
+    push: true,
   }),
   sharp,
   plugins: [

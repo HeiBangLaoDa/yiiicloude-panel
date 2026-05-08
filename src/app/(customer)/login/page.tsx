@@ -3,7 +3,7 @@
 import { LockOutlined, MailOutlined } from '@ant-design/icons'
 import { App, Button, Card, Form, Input, Typography } from 'antd'
 import { useRouter, useSearchParams } from 'next/navigation'
-import React, { useState } from 'react'
+import React, { Suspense, useState } from 'react'
 
 const { Title, Text } = Typography
 
@@ -12,7 +12,9 @@ interface LoginValues {
   password: string
 }
 
-export default function LoginPage() {
+// useSearchParams 必须包在 Suspense 内才能 next build prerender 通过
+// (Next 16 强制要求；否则 build 时 /login 静态预渲染报 missing-suspense-with-csr-bailout)
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { message } = App.useApp()
@@ -47,6 +49,47 @@ export default function LoginPage() {
   }
 
   return (
+    <Card style={{ width: 400, maxWidth: '100%' }}>
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <Title level={3} style={{ marginBottom: 4 }}>
+          Yiiicloude
+        </Title>
+        <Text type="secondary">客户自助面板</Text>
+      </div>
+      <Form<LoginValues> layout="vertical" onFinish={onFinish} disabled={loading}>
+        <Form.Item
+          name="email"
+          label="邮箱"
+          rules={[
+            { required: true, message: '请输入邮箱' },
+            { type: 'email', message: '邮箱格式不正确' },
+          ]}
+        >
+          <Input prefix={<MailOutlined />} placeholder="you@company.com" autoComplete="email" />
+        </Form.Item>
+        <Form.Item
+          name="password"
+          label="密码"
+          rules={[{ required: true, message: '请输入密码' }]}
+        >
+          <Input.Password
+            prefix={<LockOutlined />}
+            placeholder="密码"
+            autoComplete="current-password"
+          />
+        </Form.Item>
+        <Form.Item style={{ marginBottom: 0 }}>
+          <Button type="primary" htmlType="submit" loading={loading} block>
+            登录
+          </Button>
+        </Form.Item>
+      </Form>
+    </Card>
+  )
+}
+
+export default function LoginPage() {
+  return (
     <div
       style={{
         minHeight: '100vh',
@@ -57,42 +100,9 @@ export default function LoginPage() {
         padding: 24,
       }}
     >
-      <Card style={{ width: 400, maxWidth: '100%' }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={3} style={{ marginBottom: 4 }}>
-            Yiiicloude
-          </Title>
-          <Text type="secondary">客户自助面板</Text>
-        </div>
-        <Form<LoginValues> layout="vertical" onFinish={onFinish} disabled={loading}>
-          <Form.Item
-            name="email"
-            label="邮箱"
-            rules={[
-              { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '邮箱格式不正确' },
-            ]}
-          >
-            <Input prefix={<MailOutlined />} placeholder="you@company.com" autoComplete="email" />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            label="密码"
-            rules={[{ required: true, message: '请输入密码' }]}
-          >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder="密码"
-              autoComplete="current-password"
-            />
-          </Form.Item>
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Button type="primary" htmlType="submit" loading={loading} block>
-              登录
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
+      <Suspense fallback={<Card style={{ width: 400 }}>加载中...</Card>}>
+        <LoginForm />
+      </Suspense>
     </div>
   )
 }

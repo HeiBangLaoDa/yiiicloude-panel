@@ -1,0 +1,38 @@
+#!/usr/bin/expect -f
+# panel `pnpm dev` 启动时 Payload drizzle 会弹交互式 schema migration prompt
+# (eg "Is enum_xxx created or renamed from another enum? ❯ + create / ~ rename")
+# 用 prompts 包的 keypress 模式，stdin lines 喂不进去 — 必须 pty 接管
+#
+# 策略：每次见到 prompt 就 send "\r" 选高亮的默认项（通常是 `+ create`）
+# 适用场景：dev 起步时新增 enum / 新增表 / 新增 column 选 create
+# 不适用：destructive change (drop column 之类) — 默认会被选成"create new"导致数据冲突
+#
+# 用法（在 yiiicloude-panel/ 目录下）：
+#   nohup ./scripts/dev-auto.exp > /tmp/panel-dev.log 2>&1 &
+
+set timeout -1
+log_user 1
+
+cd /Users/charleslee/Desktop/YiiicloudeGroup/yiiicloude-panel
+spawn -noecho pnpm dev
+
+expect {
+    -re {Is [^?]+ (created or renamed|added or renamed)} {
+        send "\r"
+        exp_continue
+    }
+    -re {Accept warnings} {
+        send "y\r"
+        exp_continue
+    }
+    -re {❯ \+ } {
+        send "\r"
+        exp_continue
+    }
+    -re {Pulling schema from database} {
+        exp_continue
+    }
+    eof {
+        exit 0
+    }
+}

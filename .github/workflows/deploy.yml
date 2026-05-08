@@ -1,0 +1,91 @@
+name: Deploy yiiicloude-panel to Tencent Cloud
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'docker/**'
+      - 'scripts/**'
+      - 'Dockerfile'
+      - 'next.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      restart_full_stack:
+        description: '重启整栈（含 panel-pg）。默认只重启 panel-app'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-yiiicloude-panel
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TENCENT_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.TENCENT_PORT }} ${{ secrets.TENCENT_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy to server
+        env:
+          RESTART_FULL: ${{ github.event.inputs.restart_full_stack || 'false' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -p ${{ secrets.TENCENT_PORT }} \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=120 \
+              ${{ secrets.TENCENT_USER }}@${{ secrets.TENCENT_HOST }} \
+              "RESTART_FULL=$RESTART_FULL bash -s" <<'ENDSSH'
+          set -euo pipefail
+
+          PROJECT_DIR=/opt/yiiicloude-panel
+          ENV_FILE=/etc/yiiicloude-panel/.env
+          COMPOSE="docker compose -f docker/docker-compose.prod.yml --env-file $ENV_FILE"
+
+          if [[ ! -d "$PROJECT_DIR/.git" ]]; then
+              echo "❌ $PROJECT_DIR 还不是 git 仓库。先在服务器跑 scripts/bootstrap_on_server.sh"
+              exit 1
+          fi
+          if [[ ! -f "$ENV_FILE" ]]; then
+              echo "❌ $ENV_FILE 不存在。先在服务器写好 .env"
+              exit 1
+          fi
+
+          cd "$PROJECT_DIR"
+          echo "==> [1/4] git pull"
+          git pull --ff-only
+
+          echo "==> [2/4] docker compose build panel-app"
+          $COMPOSE build panel-app
+
+          if [[ "$RESTART_FULL" == "true" ]]; then
+              echo "==> [3/4] 重启整栈（panel-pg + panel-app）"
+              $COMPOSE up -d --remove-orphans
+          else
+              echo "==> [3/4] 滚动重启 panel-app"
+              $COMPOSE up -d --remove-orphans panel-app
+          fi
+
+          echo "==> [4/4] 等 panel-app /api/access 健康"
+          for i in {1..40}; do
+              if curl -fs http://127.0.0.1:3010/api/access >/dev/null 2>&1; then
+                  echo "✅ /api/access 200，部署成功"
+                  exit 0
+              fi
+              sleep 3
+          done
+          echo "❌ 120s 内 /api/access 没响应，部署失败"
+          $COMPOSE logs --tail 80 panel-app
+          exit 1
+          ENDSSH

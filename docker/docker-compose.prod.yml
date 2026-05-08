@@ -1,0 +1,99 @@
+name: yiiicloude-panel-prod
+
+# 云端生产栈
+#
+# 容器：
+#   panel-app    Next.js 16 standalone server + Payload 3 admin（端口 3001 容器内 / 3010 host）
+#   panel-pg     panel 专用 Postgres（独立 instance，库 yiiicloude_panel；端口 host 54323）
+#
+# 端口策略（避撞已有：yguard 5432 / reports 54322 / metabase 3001）：
+#   panel-app : 0.0.0.0 3010（host 调试用；容器内仍 3001 与 dev 一致）
+#   panel-pg  : 127.0.0.1 54323
+#
+# 网络：连 yiiicloude-public（让 control-plane 容器通过 service DNS "yiiicloude-panel:3001" 访问）
+#
+# 启动：
+#   docker compose -f docker/docker-compose.prod.yml --env-file /etc/yiiicloude-panel/.env up -d
+
+x-default-policy: &default-policy
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "5"
+
+services:
+
+  panel-pg:
+    image: postgres:16-alpine
+    container_name: yiiicloude-panel-prod-pg
+    <<: *default-policy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-yiiicloude_panel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-yiiicloude_panel}
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:54323:5432"
+    volumes:
+      - panel_pgdata:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-yiiicloude_panel} -d $${POSTGRES_DB:-yiiicloude_panel}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  panel-app:
+    image: yiiicloude/panel:latest
+    container_name: yiiicloude-panel-prod-app
+    <<: *default-policy
+    build:
+      # build context 是仓库根（panel 项目根），不是 docker/ 子目录
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      panel-pg:
+        condition: service_healthy
+    environment:
+      # 由 panel-pg 容器名解析（同一 compose 内部网络可直连）
+      DATABASE_URI: postgres://${POSTGRES_USER:-yiiicloude_panel}:${POSTGRES_PASSWORD}@panel-pg:5432/${POSTGRES_DB:-yiiicloude_panel}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET?PAYLOAD_SECRET must be set in .env}
+      SECRET_FERNET_KEY: ${SECRET_FERNET_KEY?SECRET_FERNET_KEY must be set in .env}
+      # control-plane 在 prod 也是 docker，走 yiiicloude-public network 用 service DNS
+      CONTROL_PLANE_URL: ${CONTROL_PLANE_URL:-http://yiiicloude-control-plane-app:8070}
+      ADMIN_SECRET: ${ADMIN_SECRET?ADMIN_SECRET must be set in .env}
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      TZ: Asia/Shanghai
+    ports:
+      # host 3010 → 容器 3001；避撞 metabase（已占 host 3001）
+      - "127.0.0.1:3010:3001"
+    networks:
+      - default
+      - yiiicloude-public
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    healthcheck:
+      # Payload admin 入口；启动到健康约 10-30s
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3001/api/access >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
+volumes:
+  panel_pgdata:
+
+networks:
+  default:
+  yiiicloude-public:
+    external: true

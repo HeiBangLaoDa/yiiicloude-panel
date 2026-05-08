@@ -1,5 +1,10 @@
 name: Deploy yiiicloude-panel to Tencent Cloud
 
+# 流程：
+#   build-and-push: GH Actions runner 跑 docker buildx → push GHCR
+#                   （prod 机器 4G RAM 不够 build，只在 CI build）
+#   deploy:         ssh 腾讯云 docker pull + compose up（不 build）
+
 on:
   push:
     branches: [main]
@@ -26,8 +31,55 @@ concurrency:
   group: deploy-yiiicloude-panel
   cancel-in-progress: false
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: heibanglaoda/yiiicloude-panel
+
 jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Setup SSH
@@ -37,7 +89,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p ${{ secrets.TENCENT_PORT }} ${{ secrets.TENCENT_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy to server
+      - name: Deploy (pull image + restart)
         env:
           RESTART_FULL: ${{ github.event.inputs.restart_full_stack || 'false' }}
         run: |
@@ -54,38 +106,38 @@ jobs:
           COMPOSE="docker compose -f docker/docker-compose.prod.yml --env-file $ENV_FILE"
 
           if [[ ! -d "$PROJECT_DIR/.git" ]]; then
-              echo "❌ $PROJECT_DIR 还不是 git 仓库。先在服务器跑 scripts/bootstrap_on_server.sh"
+              echo "❌ $PROJECT_DIR 还不是 git 仓库。先 clone"
               exit 1
           fi
           if [[ ! -f "$ENV_FILE" ]]; then
-              echo "❌ $ENV_FILE 不存在。先在服务器写好 .env"
+              echo "❌ $ENV_FILE 不存在"
               exit 1
           fi
 
           cd "$PROJECT_DIR"
-          echo "==> [1/4] git pull"
+          echo "==> [1/3] git pull (sync compose / scripts)"
           git pull --ff-only
 
-          echo "==> [2/4] docker compose build panel-app"
-          $COMPOSE build panel-app
+          echo "==> [2/3] docker pull 最新 panel-app 镜像"
+          $COMPOSE pull panel-app
 
           if [[ "$RESTART_FULL" == "true" ]]; then
-              echo "==> [3/4] 重启整栈（panel-pg + panel-app）"
+              echo "==> [3/3] 重启整栈"
               $COMPOSE up -d --remove-orphans
           else
-              echo "==> [3/4] 滚动重启 panel-app"
-              $COMPOSE up -d --remove-orphans panel-app
+              echo "==> [3/3] 滚动重启 panel-app"
+              $COMPOSE up -d --no-build --remove-orphans panel-app
           fi
 
-          echo "==> [4/4] 等 panel-app /api/access 健康"
+          echo "等 panel-app /api/access"
           for i in {1..40}; do
               if curl -fs http://127.0.0.1:3010/api/access >/dev/null 2>&1; then
-                  echo "✅ /api/access 200，部署成功"
+                  echo "✅ /api/access 200"
                   exit 0
               fi
               sleep 3
           done
-          echo "❌ 120s 内 /api/access 没响应，部署失败"
+          echo "❌ 120s 内 /api/access 没响应"
           $COMPOSE logs --tail 80 panel-app
           exit 1
           ENDSSH

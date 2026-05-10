@@ -8,7 +8,7 @@ import type { Subscription } from '@/payload-types'
 const { Title, Text } = Typography
 
 const moduleLabels: Record<string, string> = {
-  ipguard: '数据安全',
+  yguard: '数据安全',
   reports: '智能报表',
 }
 

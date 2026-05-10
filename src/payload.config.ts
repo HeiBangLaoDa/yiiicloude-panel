@@ -29,6 +29,15 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    components: {
+      views: {
+        Onboard: {
+          Component: '@/components/admin/OnboardView#OnboardView',
+          path: '/onboard',
+        },
+      },
+      beforeNavLinks: ['@/components/admin/OnboardNavLink#OnboardNavLink'],
+    },
   },
   // 中文一等公民。zh 简体；zh-TW 繁体；en 兜底
   i18n: {

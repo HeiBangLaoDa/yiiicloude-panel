@@ -78,6 +78,7 @@ export interface Config {
     'audit-log': AuditLog;
     'tenant-role-kb': TenantRoleKb;
     employees: Employee;
+    'product-modules': ProductModule;
     'payload-mcp-api-keys': PayloadMcpApiKey;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -96,6 +97,7 @@ export interface Config {
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     'tenant-role-kb': TenantRoleKbSelect<false> | TenantRoleKbSelect<true>;
     employees: EmployeesSelect<false> | EmployeesSelect<true>;
+    'product-modules': ProductModulesSelect<false> | ProductModulesSelect<true>;
     'payload-mcp-api-keys': PayloadMcpApiKeysSelect<false> | PayloadMcpApiKeysSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -508,6 +510,59 @@ export interface Employee {
   createdAt: string;
 }
 /**
+ * 集团子模块产品元信息（卖点 + 引导话术），供 SOUL.md 渲染使用
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-modules".
+ */
+export interface ProductModule {
+  id: number;
+  /**
+   * 与 Subscriptions.module_id 严格对齐：yguard / reports（未来扩展时新增行）
+   */
+  module_id: string;
+  /**
+   * 如"数据安全"、"智能报表"
+   */
+  label_zh: string;
+  /**
+   * ≤80 字符，用于 SOUL.md 摘要段和 handler 拒绝文案
+   */
+  tagline: string;
+  /**
+   * 3-5 条，每条 ≤50 字符
+   */
+  key_features: {
+    value: string;
+    id?: string | null;
+  }[];
+  /**
+   * 面向哪类客户、适合什么场景
+   */
+  target_audience?: string | null;
+  /**
+   * 3-6 条，让 LLM 学会识别"这是 X 模块的需求"
+   */
+  trigger_examples: {
+    value: string;
+    id?: string | null;
+  }[];
+  /**
+   * 如"请联系贵司客户经理或运营开通"；LLM 引用此字段生成回复
+   */
+  upsell_cta: string;
+  /**
+   * 数字越小越靠前；默认 100
+   */
+  order?: number | null;
+  /**
+   * 停售产品设 false，不进入 SOUL.md 产品矩阵段
+   */
+  active?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * API keys control which collections, resources, tools, and prompts MCP clients can access
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -677,6 +732,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'employees';
         value: number | Employee;
+      } | null)
+    | ({
+        relationTo: 'product-modules';
+        value: number | ProductModule;
       } | null)
     | ({
         relationTo: 'payload-mcp-api-keys';
@@ -917,6 +976,33 @@ export interface EmployeesSelect<T extends boolean = true> {
   is_active?: T;
   dingtalk_synced_at?: T;
   role?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-modules_select".
+ */
+export interface ProductModulesSelect<T extends boolean = true> {
+  module_id?: T;
+  label_zh?: T;
+  tagline?: T;
+  key_features?:
+    | T
+    | {
+        value?: T;
+        id?: T;
+      };
+  target_audience?: T;
+  trigger_examples?:
+    | T
+    | {
+        value?: T;
+        id?: T;
+      };
+  upsell_cta?: T;
+  order?: T;
+  active?: T;
   updatedAt?: T;
   createdAt?: T;
 }

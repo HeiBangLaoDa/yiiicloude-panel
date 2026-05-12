@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { isAdmin } from '../lib/access'
+import { actorOf } from '../hooks/audit'
 
 /**
  * 集团产品矩阵（系统级，无 tenant 隔离）。
@@ -120,7 +121,7 @@ export const ProductModules: CollectionConfig = {
           await req.payload.create({
             collection: 'audit-log',
             data: {
-              actor: req.user?.email ?? 'system',
+              actor: actorOf(req),
               action,
               target: `product-modules/${doc.id}`,
               summary: `产品模块${operation === 'create' ? '创建' : '更新'}：${doc.label_zh}（${doc.module_id}）`,
@@ -138,7 +139,7 @@ export const ProductModules: CollectionConfig = {
           await req.payload.create({
             collection: 'audit-log',
             data: {
-              actor: req.user?.email ?? 'system',
+              actor: actorOf(req),
               action: 'product_module.deleted',
               target: `product-modules/${doc.id}`,
               summary: `产品模块删除：${doc.label_zh}（${doc.module_id}）`,

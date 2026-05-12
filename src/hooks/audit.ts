@@ -16,7 +16,7 @@ function defaultGetTenantId(slug: string, doc: any) {
   return doc.tenant ?? null
 }
 
-function actorOf(req: any): string {
+export function actorOf(req: any): string {
   if (req.user?.collection === 'payload-mcp-api-keys') {
     return `mcp:${req.user.name ?? req.user.id ?? 'unknown'}`
   }

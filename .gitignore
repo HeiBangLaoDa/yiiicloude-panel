@@ -51,3 +51,4 @@ node_modules/
 
 # .env 备份文件（含真实 secrets，绝不入 git）
 .env.backup*
+scripts/regen-admin-apikey.ts

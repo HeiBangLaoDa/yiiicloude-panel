@@ -50,9 +50,14 @@ services:
       retries: 5
 
   panel-app:
-    # 镜像由 GH Actions build + push 到 GHCR；prod 只 pull（避免 prod OOM）
-    # tag :latest 永远跟 main 走；具体 sha 用 :<git-sha> 也存在
-    image: ghcr.io/heibanglaoda/yiiicloude-panel:latest
+    # 镜像在 prod 本地 build（5-25 架构统一：弃用 GHCR 模式，与 cp 保持一致）
+    # 旧 GHCR image 备份：ghcr.io/heibanglaoda/yiiicloude-panel:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+    image: yiiicloude/panel:latest
     container_name: yiiicloude-panel-prod-app
     <<: *default-policy
     depends_on:

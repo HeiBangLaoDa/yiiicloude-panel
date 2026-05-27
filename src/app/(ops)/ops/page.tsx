@@ -14,6 +14,16 @@ export default async function OpsOverviewPage() {
     overrideAccess: true,
   })
 
+  // 活跃模块 = 全租户处于 active 状态的订阅数（panel 自身 PG，Local API 直读）
+  const activeSubs = await payload.find({
+    collection: 'subscriptions',
+    where: { status: { equals: 'active' } },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const activeModules = activeSubs.totalDocs
+
   const tenants = (result.docs as Tenant[]).map((t) => ({
     id: t.id,
     tenant_id: t.tenant_id,
@@ -28,5 +38,12 @@ export default async function OpsOverviewPage() {
   const totalCount = result.totalDocs
   const onlineCount = tenants.filter((t) => t.status === 'active').length
 
-  return <TenantsOverviewView tenants={tenants} totalCount={totalCount} onlineCount={onlineCount} />
+  return (
+    <TenantsOverviewView
+      tenants={tenants}
+      totalCount={totalCount}
+      onlineCount={onlineCount}
+      activeModules={activeModules}
+    />
+  )
 }

@@ -19,6 +19,7 @@ interface Props {
   tenants: TenantRow[]
   totalCount: number
   onlineCount: number
+  activeModules: number
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -108,38 +109,9 @@ function SectionHead({ title, meta }: { title: string; meta: string }) {
   )
 }
 
-// Sparkline bar component
-function Sparkline({ bars }: { bars: number[] }) {
-  return (
-    <div
-      style={{
-        marginTop: 16,
-        height: 22,
-        display: 'flex',
-        alignItems: 'flex-end',
-        gap: 3,
-      }}
-    >
-      {bars.map((pct, i) => (
-        <span
-          key={i}
-          style={{
-            flex: 1,
-            background: i === bars.length - 1 ? 'var(--accent)' : 'var(--text-3)',
-            opacity: i === bars.length - 1 ? 1 : 0.35,
-            height: `${pct}%`,
-            minHeight: 2,
-            display: 'block',
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function TenantsOverviewView({ tenants, totalCount, onlineCount }: Props) {
+export function TenantsOverviewView({ tenants, totalCount, onlineCount, activeModules }: Props) {
   return (
     <div style={{ padding: '32px 40px 64px', maxWidth: 1440 }}>
       {/* Page title */}
@@ -235,7 +207,7 @@ export function TenantsOverviewView({ tenants, totalCount, onlineCount }: Props)
           </div>
         </div>
 
-        {/* 活跃模块 — TODO Phase 2: query subscriptions count */}
+        {/* 活跃模块 — 全租户 active 订阅数（Payload Local API 直读）*/}
         <div style={{ background: 'var(--surface-0)', padding: '22px 24px 20px' }}>
           <div
             style={{
@@ -260,8 +232,7 @@ export function TenantsOverviewView({ tenants, totalCount, onlineCount }: Props)
               letterSpacing: '-0.04em',
             }}
           >
-            {/* TODO Phase 2: replace with real subscription count from payload.find subscriptions */}
-            12
+            {String(activeModules).padStart(2, '0')}
           </div>
           <div
             style={{
@@ -271,16 +242,16 @@ export function TenantsOverviewView({ tenants, totalCount, onlineCount }: Props)
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              color: 'var(--ok)',
+              color: 'var(--text-3)',
               letterSpacing: '0.04em',
             }}
           >
-            <span>↗ +2</span>
-            <span>本周新增</span>
+            <span>—</span>
+            <span>正常订阅</span>
           </div>
         </div>
 
-        {/* 本月 LLM TOKEN — TODO Phase 2: connect cp BFF */}
+        {/* 本月 LLM TOKEN — 暂无数据源：usage-records 未被填充，待 one-api→panel ETL */}
         <div style={{ background: 'var(--surface-0)', padding: '22px 24px 20px' }}>
           <div
             style={{
@@ -300,29 +271,27 @@ export function TenantsOverviewView({ tenants, totalCount, onlineCount }: Props)
               fontWeight: 500,
               fontSize: 44,
               lineHeight: 1,
-              color: 'var(--text-1)',
+              color: 'var(--text-3)',
               fontVariantNumeric: 'tabular-nums',
               letterSpacing: '-0.04em',
             }}
           >
-            {/* TODO Phase 2: replace with real LLM token count from cp /v1/stats/monthly */}
-            84
-            <span
-              style={{
-                fontSize: 13,
-                color: 'var(--text-3)',
-                marginLeft: 4,
-                fontWeight: 400,
-                letterSpacing: 0,
-              }}
-            >
-              K / 240K
-            </span>
+            —
           </div>
-          <Sparkline bars={[20, 32, 45, 38, 60, 80, 70]} />
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              marginTop: 14,
+              color: 'var(--text-3)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            暂无数据 · 待接入用量
+          </div>
         </div>
 
-        {/* 本月日报 — TODO Phase 2: connect reports stats */}
+        {/* 本月日报 — 暂无数据源：待 cp /v1/usage/daily + reports 只读 endpoint */}
         <div style={{ background: 'var(--surface-0)', padding: '22px 24px 20px' }}>
           <div
             style={{
@@ -342,15 +311,24 @@ export function TenantsOverviewView({ tenants, totalCount, onlineCount }: Props)
               fontWeight: 500,
               fontSize: 44,
               lineHeight: 1,
-              color: 'var(--text-1)',
+              color: 'var(--text-3)',
               fontVariantNumeric: 'tabular-nums',
               letterSpacing: '-0.04em',
             }}
           >
-            {/* TODO Phase 2: replace with real count from reports /api/stats/daily-monthly */}
-            127
+            —
           </div>
-          <Sparkline bars={[30, 50, 55, 70, 80, 88, 100]} />
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              marginTop: 14,
+              color: 'var(--text-3)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            暂无数据 · 待接入 reports
+          </div>
         </div>
       </div>
 
@@ -392,150 +370,6 @@ export function TenantsOverviewView({ tenants, totalCount, onlineCount }: Props)
         </table>
       </section>
 
-      {/* ──── FEED + SYSTEM HEALTH ──── */}
-      <section style={{ marginBottom: 48 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 40, marginTop: 24 }}>
-
-          {/* Near-term activity feed — TODO Phase 2: connect cp /v1/audit/recent */}
-          <div>
-            <SectionHead title="近期动态" meta="过去 24 小时 · 28 条" />
-            <div style={{ marginTop: 8 }}>
-              {FEED_ITEMS.map((item, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '88px 1fr auto',
-                    gap: 16,
-                    padding: '12px 0',
-                    borderBottom: '1px solid var(--border-subtle)',
-                    alignItems: 'center',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 11,
-                      color: 'var(--text-3)',
-                      fontVariantNumeric: 'tabular-nums',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    {item.time}
-                  </span>
-                  <span
-                    style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}
-                    dangerouslySetInnerHTML={{ __html: item.html }}
-                  />
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 10,
-                      color: 'var(--text-3)',
-                      letterSpacing: '0.14em',
-                      textTransform: 'uppercase',
-                      padding: '2px 6px',
-                      border: '1px solid var(--border)',
-                      borderRadius: 2,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {item.tag}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* System health — TODO Phase 2: connect cp /healthz */}
-          <div>
-            <SectionHead title="系统" meta="实时" />
-            <div
-              style={{
-                border: '1px solid var(--border-subtle)',
-                padding: '18px 20px',
-                marginTop: 16,
-              }}
-            >
-              {SYSTEM_SERVICES.map((svc, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                    padding: '8px 0',
-                    borderBottom:
-                      i < SYSTEM_SERVICES.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                  }}
-                >
-                  <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{svc.name}</span>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 12,
-                      color: 'var(--text-1)',
-                      fontVariantNumeric: 'tabular-nums',
-                      letterSpacing: '0.02em',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        background: 'var(--ok)',
-                        verticalAlign: 'middle',
-                      }}
-                    />
-                    {svc.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div
-              style={{
-                border: '1px solid var(--border-subtle)',
-                padding: '18px 20px',
-                marginTop: 12,
-              }}
-            >
-              {SYSTEM_META.map((row, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                    padding: '8px 0',
-                    borderBottom:
-                      i < SYSTEM_META.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                  }}
-                >
-                  <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{row.key}</span>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 12,
-                      color: 'var(--text-3)',
-                      fontVariantNumeric: 'tabular-nums',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    {row.val}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </section>
     </div>
   )
 }
@@ -742,48 +576,3 @@ function TenantRow({
     </tr>
   )
 }
-
-// ─── Static data (Phase 1 hardcode) ──────────────────────────────────────────
-
-const FEED_ITEMS = [
-  {
-    time: '22:04:11',
-    html: '<strong style="color:var(--text-1);font-weight:500">勤寅</strong> 日报入库 +3 行 <span style="color:var(--text-3)">（邓明珠 / 李国聪 / 刘晶晶）</span>',
-    tag: 'REPORTS',
-  },
-  {
-    time: '21:48:09',
-    html: '<strong style="color:var(--text-1);font-weight:500">勤寅</strong> LLM 调用 +12 <span style="color:var(--text-3)">（智能报表 · GLM-5.1）</span>',
-    tag: 'LLM',
-  },
-  {
-    time: '21:32:55',
-    html: '<strong style="color:var(--text-1);font-weight:500">淘喜</strong> yguard SQL 跨库 JOIN 5ms <span style="color:var(--text-3)">（SOFT_LIB ⨝ PROC_LOG）</span>',
-    tag: 'YGUARD',
-  },
-  {
-    time: '20:15:02',
-    html: '<strong style="color:var(--text-1);font-weight:500">勤寅</strong> AI 追问触发 1 次 <span style="color:var(--text-3)">（李溢挺 · 项目不明）</span>',
-    tag: 'CLARIFY',
-  },
-  {
-    time: '19:00:00',
-    html: '<strong style="color:var(--text-1);font-weight:500">系统</strong> 日报 D1 缺报推送 0 人 <span style="color:var(--text-3)">（cron · 全员已交）</span>',
-    tag: 'CRON',
-  },
-]
-
-const SYSTEM_SERVICES = [
-  { name: 'yiiicloude-api', status: 'healthy' },
-  { name: 'yguard-core', status: 'healthy' },
-  { name: 'control-plane', status: 'healthy' },
-  { name: 'panel (SoT)', status: 'healthy' },
-  { name: 'reports', status: 'healthy' },
-  { name: 'hermes-qinyin', status: 'stream up' },
-]
-
-const SYSTEM_META = [
-  { key: '最近 deploy', val: '2026-05-24 03:35' },
-  { key: 'prod host', val: '122.51.156.91' },
-  { key: 'RAM 余量', val: '3.1G / 8G' },
-]

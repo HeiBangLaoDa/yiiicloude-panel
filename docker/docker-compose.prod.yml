@@ -48,6 +48,11 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    networks:
+      # default：同 compose 内 panel-app 直连；yiiicloude-public：让 reports 跨 stack
+      # 直读 panel PG (projects/employees mirror，ADR-0013 D2)。2026-06-06 加。
+      - default
+      - yiiicloude-public
 
   panel-app:
     # 镜像在 prod 本地 build（5-25 架构统一：弃用 GHCR 模式，与 cp 保持一致）

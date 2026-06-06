@@ -20,6 +20,7 @@ import { AuditLog } from './collections/AuditLog'
 import { TenantRoleKB } from './collections/TenantRoleKB'
 import { Employees } from './collections/Employees'
 import { ProductModules } from './collections/ProductModules'
+import { Projects } from './collections/Projects'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -57,6 +58,7 @@ export default buildConfig({
     TenantRoleKB,
     Employees,
     ProductModules,
+    Projects,
   ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',

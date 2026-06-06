@@ -8,6 +8,7 @@ const roleLabels: Record<string, string> = {
   boss_assistant: '老板助理',
   hr_manager: 'HR 经理',
   it_admin: 'IT 管理员',
+  project_admin: '项目总管',
   employee: '员工',
 }
 
@@ -178,6 +179,7 @@ export const Employees: CollectionConfig = {
         { label: '老板助理 (boss_assistant)', value: 'boss_assistant' },
         { label: 'HR 经理 (hr_manager)', value: 'hr_manager' },
         { label: 'IT 管理员 (it_admin)', value: 'it_admin' },
+        { label: '项目总管 (project_admin)', value: 'project_admin' },
         { label: '员工 (employee)', value: 'employee' },
       ],
       admin: {

@@ -79,6 +79,7 @@ export interface Config {
     'tenant-role-kb': TenantRoleKb;
     employees: Employee;
     'product-modules': ProductModule;
+    projects: Project;
     'payload-mcp-api-keys': PayloadMcpApiKey;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -98,6 +99,7 @@ export interface Config {
     'tenant-role-kb': TenantRoleKbSelect<false> | TenantRoleKbSelect<true>;
     employees: EmployeesSelect<false> | EmployeesSelect<true>;
     'product-modules': ProductModulesSelect<false> | ProductModulesSelect<true>;
+    projects: ProjectsSelect<false> | ProjectsSelect<true>;
     'payload-mcp-api-keys': PayloadMcpApiKeysSelect<false> | PayloadMcpApiKeysSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -505,7 +507,7 @@ export interface Employee {
   /**
    * 决定 ACL 行为。钉钉同步进来默认 employee，客户管理员升级时改。
    */
-  role: 'boss' | 'dept_head' | 'boss_assistant' | 'hr_manager' | 'it_admin' | 'employee';
+  role: 'boss' | 'dept_head' | 'boss_assistant' | 'hr_manager' | 'it_admin' | 'project_admin' | 'employee';
   updatedAt: string;
   createdAt: string;
 }
@@ -559,6 +561,52 @@ export interface ProductModule {
    * 停售产品设 false，不进入 SOUL.md 产品矩阵段
    */
   active?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * 项目主数据 SoT（ADR-0013）。销售部单向立项；reports.projects 是只读 mirror。
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects".
+ */
+export interface Project {
+  id: number;
+  /**
+   * 关联到 Tenants collection
+   */
+  tenant: number | Tenant;
+  /**
+   * 全流程流转锚，tenant 内唯一。销售立项时写入，其他部门对齐到此名
+   */
+  canonical_name: string;
+  /**
+   * 5 值生命周期。mirror 时映射到 reports.projects.stage（ADR-0013 D4）
+   */
+  status: 'prospecting' | 'contracted' | 'active' | 'accepted' | 'closed';
+  /**
+   * 发起立项的销售员 staff_id（钉钉 userid 明文）
+   */
+  owner_staff_id?: string | null;
+  /**
+   * 跨部门参与的部门名列表。本轮只建字段，聚合消费逻辑后续阶段
+   */
+  participating_departments?: string[] | null;
+  created_via: 'sales_excel' | 'admin_ui' | 'llm_aligned' | 'migration';
+  /**
+   * 员工写过的别名变体，用于 LLM 归一化对齐命中
+   */
+  aliases?: string[] | null;
+  /**
+   * 项目对应的客户单位或学校名（可空）
+   */
+  client_school?: string | null;
+  started_at?: string | null;
+  expected_done_at?: string | null;
+  /**
+   * 0-100，cron 跨部门聚合回填。本轮只建字段
+   */
+  progress_summary?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -736,6 +784,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'product-modules';
         value: number | ProductModule;
+      } | null)
+    | ({
+        relationTo: 'projects';
+        value: number | Project;
       } | null)
     | ({
         relationTo: 'payload-mcp-api-keys';
@@ -1003,6 +1055,25 @@ export interface ProductModulesSelect<T extends boolean = true> {
   upsell_cta?: T;
   order?: T;
   active?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects_select".
+ */
+export interface ProjectsSelect<T extends boolean = true> {
+  tenant?: T;
+  canonical_name?: T;
+  status?: T;
+  owner_staff_id?: T;
+  participating_departments?: T;
+  created_via?: T;
+  aliases?: T;
+  client_school?: T;
+  started_at?: T;
+  expected_done_at?: T;
+  progress_summary?: T;
   updatedAt?: T;
   createdAt?: T;
 }

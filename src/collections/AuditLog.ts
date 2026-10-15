@@ -26,7 +26,8 @@ export const AuditLog: CollectionConfig = {
       const tid = getUserTenantId(user)
       return tid ? { tenant: { equals: tid } } : false
     },
-    create: () => true,
+    // 仅 admin 可写（reports / bot 共用的 panel API Key 对应 role=admin 的 users 文档）；panel hooks 走 Local API，overrideAccess 默认 true 不受影响
+    create: ({ req: { user } }) => isAdmin(user),
     update: () => false,
     delete: () => false,
   },

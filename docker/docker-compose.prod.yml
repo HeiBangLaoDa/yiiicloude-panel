@@ -74,7 +74,11 @@ services:
       PAYLOAD_SECRET: ${PAYLOAD_SECRET?PAYLOAD_SECRET must be set in .env}
       SECRET_FERNET_KEY: ${SECRET_FERNET_KEY?SECRET_FERNET_KEY must be set in .env}
       # control-plane 在 prod 也是 docker，走 yiiicloude-public network 用 service DNS
-      CONTROL_PLANE_URL: ${CONTROL_PLANE_URL:-http://yiiicloude-control-plane-app:8070}
+      CONTROL_PLANE_URL: ${CONTROL_PLANE_URL:-http://yiiicloude-control-plane-prod-app:8070}
+      # admin-onboard 读这两个（route.ts:243-250）。2026-10-15 核对：prod .env 里有值但此前未注入，
+      # 且旧默认主机名 yiiicloude-control-plane-app 在容器内解析失败。
+      CONTROL_PLANE_BASE_URL: ${CONTROL_PLANE_BASE_URL:-http://yiiicloude-control-plane-prod-app:8070}
+      CONTROL_PLANE_ADMIN_SECRET: ${CONTROL_PLANE_ADMIN_SECRET?CONTROL_PLANE_ADMIN_SECRET must be set in .env}
       ADMIN_SECRET: ${ADMIN_SECRET?ADMIN_SECRET must be set in .env}
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"

@@ -25,7 +25,8 @@ export const UsageRecords: CollectionConfig = {
       return tid ? { tenant: { equals: tid } } : false
     },
     // 数据由后端 API 写入，前端不允许 update/delete
-    create: () => true,  // API 写入路径需要；具体由 API key 权限二次约束（Phase F 收紧）
+    // 仅 admin 可写（reports / bot 共用的 panel API Key 对应 role=admin 的 users 文档）；panel hooks 走 Local API，overrideAccess 默认 true 不受影响
+    create: ({ req: { user } }) => isAdmin(user),
     update: () => false,
     delete: () => false,
   },

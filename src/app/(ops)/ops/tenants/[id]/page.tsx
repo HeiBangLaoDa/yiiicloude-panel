@@ -4,6 +4,7 @@ import React from 'react'
 
 import config from '@/payload.config'
 import type { Employee, ImBinding, Subscription, Tenant } from '@/payload-types'
+import { requireAdmin } from '@/lib/requireAdmin'
 import { TenantDetailView } from './TenantDetailView'
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default async function TenantDetailPage({ params }: Props) {
+  await requireAdmin()
   const { id } = await params
   const tenantId = parseInt(id, 10)
   if (isNaN(tenantId)) notFound()

@@ -241,7 +241,11 @@ export async function POST(req: NextRequest) {
 
   // 8. Call control-plane provision
   const cpBase =
-    process.env.CONTROL_PLANE_BASE_URL ?? 'http://127.0.0.1:8070'
+    process.env.CONTROL_PLANE_BASE_URL ??
+    process.env.CONTROL_PLANE_URL ??
+    'http://127.0.0.1:8070'
+  // cp 对所有非 /health 路由强制 X-Admin-Secret。panel 自己的 ADMIN_SECRET 与 cp 的不是同一把
+  // （2026-10-15 prod 核对 sha 不同），不能回退到它；值由 compose 注入 CONTROL_PLANE_ADMIN_SECRET。
   const cpSecret = process.env.CONTROL_PLANE_ADMIN_SECRET ?? ''
 
   let provisionModules: string[] = modules.map((m) => m.module_id)

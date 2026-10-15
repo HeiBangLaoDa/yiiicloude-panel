@@ -3,9 +3,11 @@ import React from 'react'
 
 import config from '@/payload.config'
 import type { Tenant } from '@/payload-types'
+import { requireAdmin } from '@/lib/requireAdmin'
 import { TenantsOverviewView } from './TenantsOverviewView'
 
 export default async function OpsOverviewPage() {
+  await requireAdmin()
   const payload = await getPayload({ config: await config })
 
   const result = await payload.find({

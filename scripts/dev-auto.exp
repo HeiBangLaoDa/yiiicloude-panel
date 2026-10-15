@@ -13,7 +13,7 @@
 set timeout -1
 log_user 1
 
-cd /Users/charleslee/Desktop/YiiicloudeGroup/yiiicloude-panel
+cd /Users/charleslee/Desktop/EnterpriseAgintic/QY/DailyReport/yiiicloude-panel
 spawn -noecho pnpm dev
 
 expect {
